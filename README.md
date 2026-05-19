@@ -44,16 +44,38 @@ rm main.zip
 
 ## Configuration (`config.ini`)
 
-| Section | Key | Description |
+Multiple chargers are supported in a single installation.
+Add one `[CHARGERx]` section per device. Shared defaults go into `[DEFAULT]` and can be overridden per section.
+
+```ini
+[DEFAULT]
+Logging = ERROR
+HardwareVersion = 4
+AcPosition = 0
+PauseBetweenRequests = 5000
+SignOfLifeLog = 1
+
+[CHARGER1]
+Host = 192.168.178.51
+Deviceinstance = 43
+CustomName = Wallbox Garage
+
+[CHARGER2]
+Host = 192.168.178.52
+Deviceinstance = 44
+CustomName = Wallbox Carport
+```
+
+| Key | Section | Description |
 |---|---|---|
-| DEFAULT | AccessType | Fixed: `OnPremise` |
-| DEFAULT | Deviceinstance | Unique ID in Venus OS (e.g. `43`) |
-| DEFAULT | HardwareVersion | `3` or `4` |
-| DEFAULT | AcPosition | `0` = AC out, `1` = AC in |
-| DEFAULT | SignOfLifeLog | Interval in minutes for status log entry |
-| DEFAULT | Logging | `ERROR`, `WARNING`, `INFO`, or `DEBUG` |
-| ONPREMISE | Host | IP address of your go-eCharger |
-| ONPREMISE | PauseBetweenRequests | Polling interval in ms (min. 21) |
+| `Logging` | DEFAULT | `ERROR`, `WARNING`, `INFO`, or `DEBUG` |
+| `HardwareVersion` | DEFAULT / CHARGERx | `3` or `4` |
+| `AcPosition` | DEFAULT / CHARGERx | `0` = AC out, `1` = AC in |
+| `PauseBetweenRequests` | DEFAULT / CHARGERx | Polling interval in ms (min. 21) |
+| `SignOfLifeLog` | DEFAULT / CHARGERx | Status log interval in minutes (`0` = off) |
+| `Host` | CHARGERx | IP address of the go-eCharger |
+| `Deviceinstance` | CHARGERx | **Unique** ID per charger in Venus OS |
+| `CustomName` | CHARGERx | Name shown in the GX device list |
 
 ## Supported D-Bus paths
 
