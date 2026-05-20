@@ -15,6 +15,7 @@ import configparser
 
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
 from vedbus import VeDbusService
+import dbus
 
 CONFIG_FILE = "%s/config.ini" % os.path.dirname(os.path.realpath(__file__))
 
@@ -61,7 +62,9 @@ class DbusGoeChargerService:
         self._chargingTime         = 0.0
 
         self._dbusservice = VeDbusService(
-            "{}.http_{:02d}".format(servicename, deviceinstance), register=False)
+            "{}.http_{:02d}".format(servicename, deviceinstance),
+            bus=dbus.SystemBus(private=True),
+            register=False)
 
         logging.info("[%s] Initialising – host=%s deviceinstance=%d" % (
             charger_section, self._host, deviceinstance))
