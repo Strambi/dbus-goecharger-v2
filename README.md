@@ -32,12 +32,12 @@ Based on the original [vikt0rm/dbus-goecharger](https://github.com/vikt0rm/dbus-
 ## Install
 
 ```bash
-wget https://github.com/YOUR_USER/dbus-goecharger-v2/archive/refs/heads/main.zip
-unzip main.zip "dbus-goecharger-v2-main/*" -d /data
-mv /data/dbus-goecharger-v2-main /data/dbus-goecharger-v2
+wget https://github.com/Strambi/dbus-goecharger-v2/archive/refs/heads/master.zip
+unzip master.zip "dbus-goecharger-v2-master/*" -d /data
+mv /data/dbus-goecharger-v2-master /data/dbus-goecharger-v2
 chmod a+x /data/dbus-goecharger-v2/install.sh
 /data/dbus-goecharger-v2/install.sh
-rm main.zip
+rm master.zip
 ```
 
 > After install, edit `config.ini` before the service starts polling.
