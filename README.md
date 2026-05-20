@@ -100,3 +100,11 @@ CustomName = Wallbox Carport
 - [go-eCharger API v2 documentation](https://github.com/goecharger/go-eCharger-API-v2)
 - [Victron dbus-api documentation](https://github.com/victronenergy/venus/wiki/dbus-api)
 - [Original dbus-goecharger (API v1)](https://github.com/vikt0rm/dbus-goecharger)
+
+## Disclaimer
+
+**USE AT YOUR OWN RISK**
+**AUF EIGENE GEFAHR ZU VERWENDEN**
+
+This is the result of a leisure project. I am not a professional programmer.
+Dies ist das Ergebnis eines Freizeitprojektes. Ich bin kein professioneller Programmierer.
