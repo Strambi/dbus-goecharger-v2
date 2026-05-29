@@ -11,6 +11,7 @@ else:
     from gi.repository import GLib as gobject
 import time
 import requests
+import json
 import configparser
 
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
@@ -232,11 +233,15 @@ class DbusGoeChargerService:
                     try:
                         obj = self._system_bus.get_object(self._grid_service, self._grid_path)
                         grid_power = int(round(obj.GetValue()))
-                        self._setValue('pgrid', grid_power)
-                        logging.debug("[%s] Pushed pgrid=%d W to charger" % (
+                        # pGrid must be pushed via JSON ids format: /api/set?ids={"pGrid":X,"pPv":0,"pAkku":0}
+                        # Must be updated within 10 s or the charger disables PV surplus mode
+                        payload = json.dumps({"pGrid": grid_power, "pPv": 0, "pAkku": 0})
+                        url = "%s/api/set" % self._baseUrl()
+                        response = requests.get(url, params={'ids': payload}, timeout=5)
+                        logging.debug("[%s] Pushed pGrid=%d W to charger" % (
                             self._charger_section, grid_power))
                     except Exception as e:
-                        logging.warning("[%s] Could not read grid power from D-Bus (%s%s): %s" % (
+                        logging.warning("[%s] Could not push pGrid from D-Bus (%s%s): %s" % (
                             self._charger_section, self._grid_service, self._grid_path, e))
 
                 logging.debug("[%s] /Ac/Power=%s W  /Ac/Energy/Forward=%s kWh" % (
