@@ -213,7 +213,7 @@ class DbusGoeChargerService:
 
                 # Temperature: tma is an array of sensors
                 tma = data.get('tma')
-                if tma and isinstance(tma, list) and len(tma) > 0:
+                if tma and isinstance(tma, list) and len(tma) > 0 and tma[0] is not None:
                     self._dbusservice['/MCU/Temperature'] = round(float(tma[0]), 1)
                 else:
                     self._dbusservice['/MCU/Temperature'] = 0
