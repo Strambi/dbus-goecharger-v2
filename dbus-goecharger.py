@@ -43,6 +43,8 @@ class DbusGoeChargerService:
 
         self._charger_section = charger_section
         self._host = section['Host']
+        self._grid_service = section.get('GridService', '').strip()
+        self._grid_path = section.get('GridPath', '/Ac/Power').strip()
 
         deviceinstance      = int(section.get('Deviceinstance', section.get('Deviceinstance', '43')))
         hardwareVersion     = int(section.get('HardwareVersion', '4'))
@@ -60,6 +62,8 @@ class DbusGoeChargerService:
         self._paths                = paths
         self._lastUpdate           = 0
         self._chargingTime         = 0.0
+
+        self._system_bus = dbus.SystemBus()
 
         self._dbusservice = VeDbusService(
             "{}.http_{:02d}".format(servicename, deviceinstance),
@@ -223,6 +227,17 @@ class DbusGoeChargerService:
                 # Victron: 0=Disconnected   2=Charging          6=WaitingForStart  3=Charged
                 status_map = {0: 0, 1: 0, 2: 2, 3: 6, 4: 3, 5: 0}
                 self._dbusservice['/Status'] = status_map.get(car, 0)
+
+                if self._grid_service:
+                    try:
+                        obj = self._system_bus.get_object(self._grid_service, self._grid_path)
+                        grid_power = int(round(obj.GetValue()))
+                        self._setValue('pgrid', grid_power)
+                        logging.debug("[%s] Pushed pgrid=%d W to charger" % (
+                            self._charger_section, grid_power))
+                    except Exception as e:
+                        logging.warning("[%s] Could not read grid power from D-Bus (%s%s): %s" % (
+                            self._charger_section, self._grid_service, self._grid_path, e))
 
                 logging.debug("[%s] /Ac/Power=%s W  /Ac/Energy/Forward=%s kWh" % (
                     self._charger_section,
