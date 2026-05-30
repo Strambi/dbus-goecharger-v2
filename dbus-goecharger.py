@@ -204,21 +204,23 @@ class DbusGoeChargerService:
                 logging.debug("[%s] raw wh=%s eto=%s car=%s timeDelta=%.1fs" % (
                     self._charger_section, wh, eto, car, timeDelta))
 
-                if wh is not None and float(wh) > 0:
-                    # charger reports session energy directly
+                # Reset session state on disconnect (car==1) regardless of energy source
+                if car == 1:
+                    self._sessionEnergy = 0.0
+                    self._sessionStartEto = None
+
+                if wh is not None:
+                    # charger reports session energy directly (0 = session just started)
                     self._sessionEnergy = float(wh)
                 elif eto is not None:
                     # fallback 1: track session energy via total odometer delta
                     eto_wh = float(eto)
-                    if car == 1 or self._sessionStartEto is None:
+                    if self._sessionStartEto is None:
                         self._sessionStartEto = eto_wh
                     self._sessionEnergy = max(0.0, eto_wh - self._sessionStartEto)
-                else:
+                elif car == 2 and timeDelta > 0:
                     # fallback 2: integrate power over time ourselves
-                    if car == 1:
-                        self._sessionEnergy = 0.0
-                    elif car == 2 and timeDelta > 0:
-                        self._sessionEnergy += float(nrg[11]) * timeDelta / 3600.0
+                    self._sessionEnergy += float(nrg[11]) * timeDelta / 3600.0
 
                 energy_kwh = round(self._sessionEnergy / 1000.0, 2)
                 self._dbusservice['/Ac/Energy/Forward'] = energy_kwh
@@ -233,8 +235,6 @@ class DbusGoeChargerService:
                     self._chargingTime += timeDelta
                 elif car == 1:
                     self._chargingTime = 0
-                    self._sessionEnergy = 0.0
-                    self._sessionStartEto = None
                 charging_time = int(self._chargingTime)
                 self._dbusservice['/ChargingTime']  = charging_time
                 self._dbusservice['/Session/Time']  = charging_time
