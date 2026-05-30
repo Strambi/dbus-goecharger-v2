@@ -65,7 +65,7 @@ class DbusGoeChargerService:
         self._chargingTime         = 0.0
         self._sessionStartEto      = None   # eto baseline for session energy fallback
         self._sessionEnergy        = 0.0    # self-integrated session energy in Wh
-        self._lmo                  = None   # last known go-eCharger logic mode
+        self._lmo                  = 1      # last known go-eCharger logic mode (default: Basic)
 
         self._system_bus = dbus.SystemBus()
 
@@ -248,7 +248,7 @@ class DbusGoeChargerService:
                 # lmo=1      → Venus OS mode 0/1/2 freely selectable
                 lmo = data.get('lmo')
                 if lmo is not None:
-                    self._lmo = lmo
+                    self._lmo = int(lmo)
                 if lmo in (3, 4):
                     if self._dbusservice['/Mode'] != 0:
                         logging.info("[%s] go-eCharger lmo=%s → forcing Venus OS Mode=0 (Manual)" % (
