@@ -64,6 +64,7 @@ class DbusGoeChargerService:
         self._lastUpdate           = 0
         self._chargingTime         = 0.0
         self._sessionStartEto      = None   # eto baseline for session energy fallback
+        self._sessionEnergy        = 0.0    # self-integrated session energy in Wh
 
         self._system_bus = dbus.SystemBus()
 
@@ -198,29 +199,35 @@ class DbusGoeChargerService:
                 wh  = data.get('wh')
                 eto = data.get('eto')
                 car = int(data.get('car', 0))
-                logging.debug("[%s] raw wh=%s eto=%s car=%s" % (
-                    self._charger_section, wh, eto, car))
+                timeDelta = time.time() - self._lastUpdate if self._lastUpdate > 0 else 0
+                logging.debug("[%s] raw wh=%s eto=%s car=%s timeDelta=%.1fs" % (
+                    self._charger_section, wh, eto, car, timeDelta))
 
                 if wh is not None and float(wh) > 0:
                     # charger reports session energy directly
-                    self._dbusservice['/Ac/Energy/Forward'] = round(float(wh) / 1000.0, 2)
+                    self._sessionEnergy = float(wh)
                 elif eto is not None:
-                    # fallback: track session energy via total odometer delta
-                    eto_kwh = round(float(eto) / 1000.0, 3)
+                    # fallback 1: track session energy via total odometer delta
+                    eto_wh = float(eto)
                     if car == 1 or self._sessionStartEto is None:
-                        # car disconnected or first run → reset baseline
-                        self._sessionStartEto = eto_kwh
-                    session_kwh = round(eto_kwh - self._sessionStartEto, 2)
-                    self._dbusservice['/Ac/Energy/Forward'] = max(0.0, session_kwh)
+                        self._sessionStartEto = eto_wh
+                    self._sessionEnergy = max(0.0, eto_wh - self._sessionStartEto)
                 else:
-                    self._dbusservice['/Ac/Energy/Forward'] = 0.0
+                    # fallback 2: integrate power over time ourselves
+                    if car == 1:
+                        self._sessionEnergy = 0.0
+                    elif car == 2 and timeDelta > 0:
+                        self._sessionEnergy += float(nrg[11]) * timeDelta / 3600.0
+
+                self._dbusservice['/Ac/Energy/Forward'] = round(self._sessionEnergy / 1000.0, 2)
 
                 # Charging time – increment while actively charging, reset on disconnect
-                timeDelta = time.time() - self._lastUpdate
-                if car == 2 and self._lastUpdate > 0:
+                if car == 2 and timeDelta > 0:
                     self._chargingTime += timeDelta
                 elif car == 1:
                     self._chargingTime = 0
+                    self._sessionEnergy = 0.0
+                    self._sessionStartEto = None
                 self._dbusservice['/ChargingTime'] = int(self._chargingTime)
 
                 # alw is read-only in API v2
