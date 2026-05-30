@@ -63,6 +63,7 @@ class DbusGoeChargerService:
         self._paths                = paths
         self._lastUpdate           = 0
         self._chargingTime         = 0.0
+        self._sessionStartEto      = None   # eto baseline for session energy fallback
 
         self._system_bus = dbus.SystemBus()
 
@@ -193,17 +194,29 @@ class DbusGoeChargerService:
                 self._dbusservice['/Current']      = round(
                     max(float(nrg[4]), float(nrg[5]), float(nrg[6])), 1)
 
-                # Energy: wh = session energy, eto = total energy (both in Wh)
+                # Energy: wh = session energy (Wh), eto = total odometer (Wh)
                 wh  = data.get('wh')
                 eto = data.get('eto')
-                if wh is not None:
+                car = int(data.get('car', 0))
+                logging.debug("[%s] raw wh=%s eto=%s car=%s" % (
+                    self._charger_section, wh, eto, car))
+
+                if wh is not None and float(wh) > 0:
+                    # charger reports session energy directly
                     self._dbusservice['/Ac/Energy/Forward'] = round(float(wh) / 1000.0, 2)
                 elif eto is not None:
-                    self._dbusservice['/Ac/Energy/Forward'] = round(float(eto) / 1000.0, 2)
+                    # fallback: track session energy via total odometer delta
+                    eto_kwh = round(float(eto) / 1000.0, 3)
+                    if car == 1 or self._sessionStartEto is None:
+                        # car disconnected or first run → reset baseline
+                        self._sessionStartEto = eto_kwh
+                    session_kwh = round(eto_kwh - self._sessionStartEto, 2)
+                    self._dbusservice['/Ac/Energy/Forward'] = max(0.0, session_kwh)
+                else:
+                    self._dbusservice['/Ac/Energy/Forward'] = 0.0
 
                 # Charging time – increment while actively charging, reset on disconnect
                 timeDelta = time.time() - self._lastUpdate
-                car = int(data.get('car', 0))
                 if car == 2 and self._lastUpdate > 0:
                     self._chargingTime += timeDelta
                 elif car == 1:
