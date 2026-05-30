@@ -249,10 +249,13 @@ class DbusGoeChargerService:
                 lmo = data.get('lmo')
                 if lmo is not None:
                     self._lmo = int(lmo)
-                if lmo in (3, 4):
-                    if self._dbusservice['/Mode'] != 0:
+                current_mode = self._dbusservice['/Mode']
+                logging.debug("[%s] lmo=%s (type=%s) current_mode=%s" % (
+                    self._charger_section, lmo, type(lmo).__name__, current_mode))
+                if self._lmo in (3, 4):
+                    if current_mode != 0:
                         logging.info("[%s] go-eCharger lmo=%s → forcing Venus OS Mode=0 (Manual)" % (
-                            self._charger_section, lmo))
+                            self._charger_section, self._lmo))
                         self._dbusservice['/Mode'] = 0
 
                 # Temperature: tma is an array of sensors
