@@ -219,7 +219,9 @@ class DbusGoeChargerService:
                     elif car == 2 and timeDelta > 0:
                         self._sessionEnergy += float(nrg[11]) * timeDelta / 3600.0
 
-                self._dbusservice['/Ac/Energy/Forward'] = round(self._sessionEnergy / 1000.0, 2)
+                energy_kwh = round(self._sessionEnergy / 1000.0, 2)
+                self._dbusservice['/Ac/Energy/Forward'] = energy_kwh
+                self._dbusservice['/Session/Energy']    = energy_kwh
 
                 # Charging time – increment while actively charging, reset on disconnect
                 if car == 2 and timeDelta > 0:
@@ -228,7 +230,9 @@ class DbusGoeChargerService:
                     self._chargingTime = 0
                     self._sessionEnergy = 0.0
                     self._sessionStartEto = None
-                self._dbusservice['/ChargingTime'] = int(self._chargingTime)
+                charging_time = int(self._chargingTime)
+                self._dbusservice['/ChargingTime']  = charging_time
+                self._dbusservice['/Session/Time']  = charging_time
 
                 # alw is read-only in API v2
                 self._dbusservice['/StartStop'] = 1 if data.get('alw') else 0
@@ -334,18 +338,20 @@ def main():
         _s    = lambda p, v: (str(v) + ' s')
 
         paths = {
-            '/Ac/Power':          {'initial': 0, 'textformat': _w},
-            '/Ac/L1/Power':       {'initial': 0, 'textformat': _w},
-            '/Ac/L2/Power':       {'initial': 0, 'textformat': _w},
-            '/Ac/L3/Power':       {'initial': 0, 'textformat': _w},
-            '/Ac/Energy/Forward': {'initial': 0, 'textformat': _kwh},
-            '/ChargingTime':      {'initial': 0, 'textformat': _s},
-            '/Ac/Voltage':        {'initial': 0, 'textformat': _v},
-            '/Current':           {'initial': 0, 'textformat': _a},
-            '/SetCurrent':        {'initial': 0, 'textformat': _a},
-            '/MaxCurrent':        {'initial': 0, 'textformat': _a},
-            '/MCU/Temperature':   {'initial': 0, 'textformat': _degC},
-            '/StartStop':         {'initial': 0, 'textformat': lambda p, v: str(v)},
+            '/Ac/Power':          {'initial': 0,   'textformat': _w},
+            '/Ac/L1/Power':       {'initial': 0,   'textformat': _w},
+            '/Ac/L2/Power':       {'initial': 0,   'textformat': _w},
+            '/Ac/L3/Power':       {'initial': 0,   'textformat': _w},
+            '/Ac/Energy/Forward': {'initial': 0.0, 'textformat': _kwh},
+            '/Session/Energy':    {'initial': 0.0, 'textformat': _kwh},  # Venus OS gui-v2
+            '/ChargingTime':      {'initial': 0,   'textformat': _s},
+            '/Session/Time':      {'initial': 0,   'textformat': _s},    # Venus OS gui-v2
+            '/Ac/Voltage':        {'initial': 0,   'textformat': _v},
+            '/Current':           {'initial': 0,   'textformat': _a},
+            '/SetCurrent':        {'initial': 0,   'textformat': _a},
+            '/MaxCurrent':        {'initial': 0,   'textformat': _a},
+            '/MCU/Temperature':   {'initial': 0,   'textformat': _degC},
+            '/StartStop':         {'initial': 0,   'textformat': lambda p, v: str(v)},
         }
 
         services = []
