@@ -65,6 +65,7 @@ class DbusGoeChargerService:
         self._chargingTime         = 0.0
         self._sessionStartEto      = None   # eto baseline for session energy fallback
         self._sessionEnergy        = 0.0    # self-integrated session energy in Wh
+        self._lmo                  = None   # last known go-eCharger logic mode
 
         self._system_bus = dbus.SystemBus()
 
@@ -76,7 +77,7 @@ class DbusGoeChargerService:
         logging.info("[%s] Initialising – host=%s deviceinstance=%d" % (
             charger_section, self._host, deviceinstance))
 
-        paths_wo_unit = ['/Status', '/Mode']
+        paths_wo_unit = ['/Status']
 
         data = self._getData('sse,fwv')
 
@@ -182,7 +183,7 @@ class DbusGoeChargerService:
             # [4] I L1  [5] I L2  [6] I L3
             # [7] P L1  [8] P L2  [9] P L3  [10] P N  [11] P Total
             # [12] PF L1  [13] PF L2  [14] PF L3  [15] PF N
-            data = self._getData('nrg,wh,eto,alw,amp,ama,car,tma,frc,cdi')
+            data = self._getData('nrg,wh,eto,alw,amp,ama,car,tma,frc,cdi,lmo')
 
             if data is not None:
                 nrg = data.get('nrg', [0] * 16)
@@ -242,7 +243,17 @@ class DbusGoeChargerService:
                 self._dbusservice['/StartStop'] = 1 if data.get('alw') else 0
                 self._dbusservice['/SetCurrent'] = int(data.get('amp', 0))
                 self._dbusservice['/MaxCurrent'] = int(data.get('ama', 0))
-                self._dbusservice['/Mode']       = 0  # Manual, no auto control
+                # go-eCharger lmo: 1=Default  3=Eco  4=Next Trip
+                # lmo=3 or 4 → force Venus OS Manual (0), block mode changes
+                # lmo=1      → Venus OS mode 0/1/2 freely selectable
+                lmo = data.get('lmo')
+                if lmo is not None:
+                    self._lmo = lmo
+                if lmo in (3, 4):
+                    if self._dbusservice['/Mode'] != 0:
+                        logging.info("[%s] go-eCharger lmo=%s → forcing Venus OS Mode=0 (Manual)" % (
+                            self._charger_section, lmo))
+                        self._dbusservice['/Mode'] = 0
 
                 # Temperature: tma is an array of sensors
                 tma = data.get('tma')
@@ -298,6 +309,13 @@ class DbusGoeChargerService:
             return self._setValue('amp', int(value))
         elif path == '/MaxCurrent':
             return self._setValue('ama', int(value))
+        elif path == '/Mode':
+            # Only allow mode changes when go-eCharger is in Default mode (lmo=1)
+            if self._lmo != 1 and int(value) != 0:
+                logging.info("[%s] Mode change to %s blocked: go-eCharger lmo=%s (not Default)" % (
+                    self._charger_section, value, self._lmo))
+                return False
+            return True  # accept locally, Venus OS handles auto/scheduled control
         elif path == '/StartStop':
             # frc: 0=Neutral  1=Force Off  2=Force On
             frc_value = 2 if int(value) == 1 else 1
@@ -356,6 +374,7 @@ def main():
             '/MaxCurrent':        {'initial': 0,   'textformat': _a},
             '/MCU/Temperature':   {'initial': 0,   'textformat': _degC},
             '/StartStop':         {'initial': 0,   'textformat': lambda p, v: str(v)},
+            '/Mode':              {'initial': 0,   'textformat': lambda p, v: str(v)},
         }
 
         services = []
