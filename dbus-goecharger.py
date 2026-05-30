@@ -252,7 +252,7 @@ class DbusGoeChargerService:
                 current_mode = self._dbusservice['/Mode']
                 logging.debug("[%s] lmo=%s (type=%s) current_mode=%s" % (
                     self._charger_section, lmo, type(lmo).__name__, current_mode))
-                if self._lmo in (3, 4):
+                if self._lmo in (4, 5):  # 4=Eco, 5=Daily trip → force Manual
                     if current_mode != 0:
                         logging.info("[%s] go-eCharger lmo=%s → forcing Venus OS Mode=0 (Manual)" % (
                             self._charger_section, self._lmo))
@@ -314,7 +314,7 @@ class DbusGoeChargerService:
             return self._setValue('ama', int(value))
         elif path == '/Mode':
             # Only allow mode changes when go-eCharger is in Default mode (lmo=1)
-            if self._lmo != 1 and int(value) != 0:
+            if self._lmo in (4, 5) and int(value) != 0:  # block Auto/Scheduled in Eco/Daily trip
                 logging.info("[%s] Mode change to %s blocked: go-eCharger lmo=%s (not Default)" % (
                     self._charger_section, value, self._lmo))
                 return False
