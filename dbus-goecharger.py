@@ -182,7 +182,7 @@ class DbusGoeChargerService:
             # [4] I L1  [5] I L2  [6] I L3
             # [7] P L1  [8] P L2  [9] P L3  [10] P N  [11] P Total
             # [12] PF L1  [13] PF L2  [14] PF L3  [15] PF N
-            data = self._getData('nrg,wh,eto,alw,amp,ama,car,tma,frc')
+            data = self._getData('nrg,wh,eto,alw,amp,ama,car,tma,frc,cdi')
 
             if data is not None:
                 nrg = data.get('nrg', [0] * 16)
@@ -223,8 +223,12 @@ class DbusGoeChargerService:
                 self._dbusservice['/Ac/Energy/Forward'] = energy_kwh
                 self._dbusservice['/Session/Energy']    = energy_kwh
 
-                # Charging time – increment while actively charging, reset on disconnect
-                if car == 2 and timeDelta > 0:
+                # Charging time: prefer hardware value (cdi), fallback to self-tracking
+                cdi = data.get('cdi')
+                if cdi and isinstance(cdi, dict) and cdi.get('type') == 2 and cdi.get('value') is not None:
+                    # cdi.value = milliseconds since session start
+                    self._chargingTime = float(cdi['value']) / 1000.0
+                elif car == 2 and timeDelta > 0:
                     self._chargingTime += timeDelta
                 elif car == 1:
                     self._chargingTime = 0
